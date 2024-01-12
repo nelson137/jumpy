@@ -210,18 +210,20 @@ fn update_player_driving(
         let player_control = player_inputs.players[player_idx.0 as usize].control;
 
         if player_control.shoot_pressed {
-            if player_state.current != *idle::ID || player_driving.contains(player_ent) {
-                continue;
+            if player_control.shoot_just_pressed {
+                if player_state.current != *idle::ID || player_driving.contains(player_ent) {
+                    continue;
+                }
+                commands.add(flappy_jellyfish::spawn_or_take_control(
+                    player_ent,
+                    jellyfish_ent,
+                    jellyfish.flappy,
+                ));
+                commands.add(flappy_jellyfish::player_put_on_hat(
+                    player_ent,
+                    jellyfish_ent,
+                ));
             }
-            commands.add(flappy_jellyfish::spawn_or_take_control(
-                player_ent,
-                jellyfish_ent,
-                jellyfish.flappy,
-            ));
-            commands.add(flappy_jellyfish::player_put_on_hat(
-                player_ent,
-                jellyfish_ent,
-            ));
         } else if let Some(driving) = player_driving.remove(player_ent) {
             commands.add(flappy_jellyfish::player_take_off_hat(
                 player_ent,
