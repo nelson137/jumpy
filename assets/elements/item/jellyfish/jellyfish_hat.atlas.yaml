@@ -1,0 +1,4 @@
+image: ./jellyfish_hat.png
+tile_size: [45, 31]
+rows: 1
+columns: 1

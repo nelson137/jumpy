@@ -62,7 +62,12 @@ pub fn spawn_or_take_control(
 ) -> StaticSystem<(), ()> {
     (move |world: &World| {
         if let Some(flappy_ent) = flappy_ent {
-            take_control(owner, flappy_ent).run(world, ());
+            let original_item_offset = {
+                let attachments = world.components.get::<PlayerBodyAttachment>().borrow();
+                let attachment = attachments.get(jellyfish_ent);
+                attachment.map(|a| a.offset).unwrap_or_default()
+            };
+            take_control(owner, flappy_ent, original_item_offset).run(world, ());
         } else {
             {
                 let mut jellyfishes = world.components.get::<Jellyfish>().borrow_mut();
@@ -81,9 +86,19 @@ pub fn spawn_or_take_control(
 }
 
 /// Take control of the flappy associated with a jellyfish for a player.
-fn take_control(owner: Entity, flappy_ent: Entity) -> StaticSystem<(), ()> {
+fn take_control(
+    owner: Entity,
+    flappy_ent: Entity,
+    original_item_offset: Vec3,
+) -> StaticSystem<(), ()> {
     (move |mut player_driving: CompMut<PlayerDrivingJellyfish>| {
-        player_driving.insert(owner, PlayerDrivingJellyfish { flappy: flappy_ent });
+        player_driving.insert(
+            owner,
+            PlayerDrivingJellyfish {
+                flappy: flappy_ent,
+                original_item_offset,
+            },
+        );
     })
     .system()
 }
@@ -92,6 +107,7 @@ fn take_control(owner: Entity, flappy_ent: Entity) -> StaticSystem<(), ()> {
 fn spawn(owner: Entity, jellyfish_ent: Entity) -> StaticSystem<(), ()> {
     (move |mut entities: ResMut<Entities>,
            element_handles: Comp<ElementHandle>,
+           player_attachments: Comp<PlayerBodyAttachment>,
            mut player_driving: CompMut<PlayerDrivingJellyfish>,
            mut jellyfishes: CompMut<Jellyfish>,
            mut flappy_jellyfishes: CompMut<FlappyJellyfish>,
@@ -114,7 +130,16 @@ fn spawn(owner: Entity, jellyfish_ent: Entity) -> StaticSystem<(), ()> {
 
         let flappy_ent = entities.create();
 
-        player_driving.insert(owner, PlayerDrivingJellyfish { flappy: flappy_ent });
+        player_driving.insert(
+            owner,
+            PlayerDrivingJellyfish {
+                flappy: flappy_ent,
+                original_item_offset: player_attachments
+                    .get(jellyfish_ent)
+                    .map(|a| a.offset)
+                    .unwrap_or_default(),
+            },
+        );
         if let Some(jellyfish) = jellyfishes.get_mut(jellyfish_ent) {
             jellyfish.flappy = Some(flappy_ent);
         }
@@ -153,6 +178,66 @@ fn spawn(owner: Entity, jellyfish_ent: Entity) -> StaticSystem<(), ()> {
         transf.translation += flappy_meta.spawn_offset.extend(0.0);
         transforms.insert(flappy_ent, transf);
         camera_subjects.insert(flappy_ent, default());
+    })
+    .system()
+}
+
+pub fn player_put_on_hat(player_ent: Entity, jellyfish_ent: Entity) -> StaticSystem<(), ()> {
+    (move |element_handles: Comp<ElementHandle>,
+           assets: Res<AssetServer>,
+           mut player_layers: CompMut<PlayerLayers>,
+           mut atlas_sprites: CompMut<AtlasSprite>,
+           mut player_attachments: CompMut<PlayerBodyAttachment>| {
+        let Some((hat_atlas, driving_fin_anim)) = element_handles
+            .get(jellyfish_ent)
+            .map(|element_h| assets.get(element_h.0))
+            .map(|element_meta| assets.get(element_meta.data))
+            .as_deref()
+            .and_then(SchemaBox::try_get_jellyfish_meta)
+            .map(|jellyfish_meta| (jellyfish_meta.hat_atlas, jellyfish_meta.driving_fin_anim))
+        else {
+            return;
+        };
+        if let Some(layer) = player_layers.get_mut(player_ent) {
+            layer.fin_anim = driving_fin_anim;
+        }
+        atlas_sprites.insert(jellyfish_ent, AtlasSprite::new(hat_atlas));
+        if let Some(attachment) = player_attachments.get_mut(jellyfish_ent) {
+            attachment.head = true;
+            attachment.offset = Vec3::new(-6.0, 22.0, PlayerLayers::HAT_Z_OFFSET);
+        }
+    })
+    .system()
+}
+
+pub fn player_take_off_hat(
+    player_ent: Entity,
+    jellyfish_ent: Entity,
+    original_item_offset: Vec3,
+) -> StaticSystem<(), ()> {
+    (move |element_handles: Comp<ElementHandle>,
+           assets: Res<AssetServer>,
+           mut player_layers: CompMut<PlayerLayers>,
+           mut atlas_sprites: CompMut<AtlasSprite>,
+           mut player_attachments: CompMut<PlayerBodyAttachment>| {
+        let Some((atlas, fin_anim)) = element_handles
+            .get(jellyfish_ent)
+            .map(|element_h| assets.get(element_h.0))
+            .map(|element_meta| assets.get(element_meta.data))
+            .as_deref()
+            .and_then(SchemaBox::try_get_jellyfish_meta)
+            .map(|jellyfish_meta| (jellyfish_meta.atlas, jellyfish_meta.fin_anim))
+        else {
+            return;
+        };
+        if let Some(layer) = player_layers.get_mut(player_ent) {
+            layer.fin_anim = fin_anim;
+        }
+        atlas_sprites.insert(jellyfish_ent, AtlasSprite::new(atlas));
+        if let Some(attachment) = player_attachments.get_mut(jellyfish_ent) {
+            attachment.head = false;
+            attachment.offset = original_item_offset;
+        }
     })
     .system()
 }

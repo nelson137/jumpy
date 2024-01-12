@@ -8,6 +8,8 @@ use super::flappy_jellyfish::{self, FlappyJellyfishMeta};
 pub struct JellyfishMeta {
     /// The atlas for the item image.
     pub atlas: Handle<Atlas>,
+    /// The atlas for the item when the player is driving.
+    pub hat_atlas: Handle<Atlas>,
     /// The size of the item.
     pub body_size: Vec2,
     /// The velocity of the item when thrown.
@@ -16,6 +18,8 @@ pub struct JellyfishMeta {
     pub angular_velocity: f32,
     /// The animation frame a player's fin should use when holding the item.
     pub fin_anim: Ustr,
+    /// The animation frame a player's fin should use when driving.
+    pub driving_fin_anim: Ustr,
     /// The offset relative to the center of the player that is holding the
     /// item.
     pub grab_offset: Vec2,
@@ -23,6 +27,17 @@ pub struct JellyfishMeta {
     pub max_ammo: u32,
     /// The metadata of a flappy jellyfish.
     pub flappy_meta: Handle<FlappyJellyfishMeta>,
+}
+
+pub trait JellyfishMetaSchemaExts {
+    /// Try to cast the `asset` to a `JellyfishMeta`.
+    fn try_get_jellyfish_meta(&self) -> Option<&JellyfishMeta>;
+}
+
+impl JellyfishMetaSchemaExts for SchemaBox {
+    fn try_get_jellyfish_meta(&self) -> Option<&JellyfishMeta> {
+        self.try_cast_ref::<JellyfishMeta>().ok()
+    }
 }
 
 pub fn game_plugin(game: &mut Game) {
@@ -58,6 +73,7 @@ impl Jellyfish {
 #[derive(Clone, Debug, Default, HasSchema)]
 pub struct PlayerDrivingJellyfish {
     pub flappy: Entity,
+    pub original_item_offset: Vec3,
 }
 
 fn hydrate(
@@ -202,8 +218,16 @@ fn update_player_driving(
                 jellyfish_ent,
                 jellyfish.flappy,
             ));
-        } else {
-            player_driving.remove(player_ent);
+            commands.add(flappy_jellyfish::player_put_on_hat(
+                player_ent,
+                jellyfish_ent,
+            ));
+        } else if let Some(driving) = player_driving.remove(player_ent) {
+            commands.add(flappy_jellyfish::player_take_off_hat(
+                player_ent,
+                jellyfish_ent,
+                driving.original_item_offset,
+            ));
         }
     }
 }
