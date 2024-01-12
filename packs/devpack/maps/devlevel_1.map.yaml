@@ -1239,7 +1239,7 @@ layers:
     element: core:/elements/item/sword/sword.element.yaml
   - pos:
     - 300.0
-    - 710.0
+    - 610.0
     element: core:/elements/item/jellyfish/jellyfish.element.yaml
   - pos:
     - 480.0
