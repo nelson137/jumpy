@@ -165,9 +165,8 @@ impl<'a> SpawnerManager<'a> {
         entities: &Res<Entities>,
     ) {
         // try to find one other spawner and store the existing player entities
-        if let Some((_, (_, first_spawner))) = entities
-            .iter_with((spawner_elements, &self.spawners))
-            .next()
+        if let Some((_, (_, first_spawner))) =
+            entities.get_first_with((spawner_elements, &self.spawners))
         {
             // all of the player spawners share the same group identifier
             let spawner = Spawner::new_grouped(first_spawner.group_identifier.clone());
@@ -211,8 +210,7 @@ impl<'a> SpawnerManager<'a> {
         entities: &ResMutInit<Entities>,
     ) {
         let (_, (_, spawner)) = entities
-            .iter_with((spawner_elements, &self.spawners))
-            .next()
+            .get_first_with((spawner_elements, &self.spawners))
             .expect("There should already exist at least one spawner of the type provided.");
         self.spawner_entities.entities_per_spawner_group_identifier
             .get_mut(&spawner.group_identifier)
@@ -227,8 +225,7 @@ impl<'a> SpawnerManager<'a> {
         entities: &ResMutInit<Entities>,
     ) {
         let (_, (_, spawner)) = entities
-            .iter_with((spawner_elements, &self.spawners))
-            .next()
+            .get_first_with((spawner_elements, &self.spawners))
             .expect("There should already exist at least one spawner of the type provided.");
         self.spawner_entities.entities_per_spawner_group_identifier
             .get_mut(&spawner.group_identifier)

@@ -60,9 +60,8 @@ fn camera_controller(
 ) {
     let meta = &meta.core.camera;
 
-    let Some((_ent, (camera, camera_shake, camera_state))) = entities
-        .iter_with((&mut cameras, &mut camera_shakes, &camera_states))
-        .next()
+    let Ok((_ent, (camera, camera_shake, camera_state))) =
+        entities.get_single_with((&mut cameras, &mut camera_shakes, &camera_states))
     else {
         return;
     };
@@ -187,8 +186,7 @@ fn camera_parallax(
     let map_size = map.grid_size.as_vec2() * map.tile_size;
 
     let camera_transform = entities
-        .iter_with((&transforms, &cameras))
-        .next()
+        .get_single_with((&transforms, &cameras))
         .map(|x| x.1 .0)
         .copied()
         .unwrap();

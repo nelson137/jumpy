@@ -311,10 +311,7 @@ pub fn throw_dropped_items(
                 transform.translation.z = z_depth_for_map_layer(map_layer.layer_idx);
             } else {
                 // Grab a random player spawner and use that for the z depth
-                let (_, (_, layer)) = entities
-                    .iter_with((&player_spawnwers, &map_layers))
-                    .next()
-                    .unwrap();
+                let (_, (_, layer)) = entities.first_with((&player_spawnwers, &map_layers));
                 transform.translation.z = z_depth_for_map_layer(layer.layer_idx);
             }
 
